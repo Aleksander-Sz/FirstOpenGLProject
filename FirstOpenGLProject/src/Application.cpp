@@ -2,6 +2,8 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <chrono>
+#include <ctime>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -12,6 +14,17 @@ void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+}
+
+void orbitTriangle(int time, float* vertices, int offset)
+{
+	float state = fmod(time, 10000.0f) / 10000;
+	float movement = 0.0001f;
+	if (state < 0.5)
+		movement *= -1;
+	vertices[offset+1] += movement;
+	vertices[offset+4] += movement;
+	vertices[offset+7] += movement;
 }
 
 int main()
@@ -93,18 +106,29 @@ int main()
 			-0.5f, -0.5f, 0.0f,
 			 0.5f, -0.5f, 0.0f,
 			-0.5f,  0.5f, 0.0f,
-			 0.5f,  0.5f, 0.0f
+			 0.5f,  0.5f, 0.0f,
+			 0.6f, -0.1f, 0.0f,
+			 0.8f, -0.1f, 0.0f,
+			 0.7f,  0.1f, 0.0f
 	};
 	unsigned int indices[] = {
 		0, 1, 2,
 		1, 2, 3
 	};
+	unsigned int indices2[] = {
+		4, 5, 6
+	};
 	unsigned int VBO;
 	unsigned int EBO;
 	unsigned int VAO;
+	unsigned int EBO2;
+	unsigned int VAO2;
 	glGenBuffers(1, &VBO);
 	glGenBuffers(1, &EBO);
 	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &EBO2);
+	glGenVertexArrays(1, &VAO2);
+
 	glBindVertexArray(VAO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -114,8 +138,17 @@ int main()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	// -----
+	glBindVertexArray(VAO2);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO2);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices2), indices2, GL_DYNAMIC_DRAW);
 
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// -----
+	int frame = 0;
 	glViewport(0, 0, 800, 600);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	while (!glfwWindowShouldClose(window))
@@ -128,11 +161,18 @@ int main()
 
 		glUseProgram(shaderProgram);
 		glBindVertexArray(VAO);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(VAO2);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
 
+		const auto p1 = std::chrono::system_clock::now();
+		orbitTriangle(std::chrono::duration_cast<std::chrono::milliseconds>(p1.time_since_epoch()).count(), vertices, 12);
+		frame++;
 		// -----
 		glfwSwapBuffers(window);
 		glfwPollEvents();
