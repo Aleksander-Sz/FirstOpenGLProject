@@ -1,8 +1,10 @@
 #define GLAD_GL_IMPLEMENTATION
-#include <glad/gl.h>
+#include <GLAD/gl.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include "../Shader.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -42,13 +44,17 @@ int main()
 	ourShader.use();
 
 	float vertices[] = {
-			-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-			 0.0f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-			 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f
+			// positions		// colors		// UV coords
+		    -0.7f, -0.5f, 0.0f, 1.0f, 0.8f, 0.8f, 0.0f, 0.0f,
+		    -0.4f,  0.2f, 0.0f, 0.8f, 1.0f, 1.0f, 0.5f, 1.0f,
+		    -0.1f, -0.5f, 0.0f, 0.8f, 0.8f, 0.8f, 1.0f, 0.0f,
+			 0.1f, -0.5f, 0.0f, 1.0f, 0.8f, 1.0f, 0.0f, 0.0f,
+			 0.4f,  0.2f, 0.0f, 1.0f, 1.0f, 1.0f, 0.5f, 1.0f,
+			 0.7f, -0.5f, 0.0f, 1.0f, 0.8f, 1.0f, 1.0f, 0.0f
 	};
 	unsigned int indices[] = {
 		0, 1, 2,
-		1, 2, 3
+		3, 4, 5
 	};
 	unsigned int VBO;
 	unsigned int EBO;
@@ -63,10 +69,43 @@ int main()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3*sizeof(float)));
 	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	glEnableVertexAttribArray(2);
+
+	unsigned int textures[2];
+	glGenTextures(2, textures);
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+	int width, height, nrChannels;
+	stbi_set_flip_vertically_on_load(true);
+	unsigned char* data = stbi_load("Textures/Poliigon_BrickWallReclaimed_8320_BaseColor.jpg", &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture.\n";
+	}
+	stbi_image_free(data);
+	glBindTexture(GL_TEXTURE_2D, textures[1]);
+	data = stbi_load("Textures/smile.jpg", &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture.\n";
+	}
+	stbi_image_free(data);
+	glUniform1i(glGetUniformLocation(ourShader.ID, "texture1"), 0);
+	glUniform1i(glGetUniformLocation(ourShader.ID, "texture2"), 1);
 
 	// -----
 	int frame = 0;
@@ -84,9 +123,12 @@ int main()
 		float timeValue = glfwGetTime();
 		float greenValue = (sin(timeValue) * 0.4f) + 0.6f;
 
-		ourShader.setFloat("someUniform", 1.0f);
 		ourShader.setFloat("offset", 0.1f);
 		glBindVertexArray(VAO);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textures[0]);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, textures[1]);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
