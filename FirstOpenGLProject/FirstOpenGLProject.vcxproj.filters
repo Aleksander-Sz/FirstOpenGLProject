@@ -31,6 +31,8 @@
   <ItemGroup>
     <None Include="Shaders\VertexShader.glsl" />
     <None Include="Shaders\FragmentShader.glsl" />
+    <None Include="Shaders\LightsVertexShader.glsl" />
+    <None Include="Shaders\LightsFragmentShader.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">

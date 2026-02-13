@@ -15,6 +15,8 @@ float lastFrame = 0.0f;
 float lastX = 400, lastY = 300;
 bool firstMovement = true;
 Camera camera;
+glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+glm::vec3 lightColor(0.8f, 1.0f, 0.8f);
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -178,6 +180,18 @@ int main()
 		glm::vec3(1.5f, 0.2f, -1.5f),
 		glm::vec3(-1.3f, 1.0f, -1.5f)
 	};
+	glm::vec3 objectColors[] = {
+		glm::vec3(1.0f, 0.0f, 0.0f),  // Red
+		glm::vec3(0.0f, 1.0f, 0.0f),  // Green
+		glm::vec3(0.0f, 0.0f, 1.0f),  // Blue
+		glm::vec3(1.0f, 1.0f, 0.0f),  // Yellow
+		glm::vec3(1.0f, 0.0f, 1.0f),  // Magenta
+		glm::vec3(0.0f, 1.0f, 1.0f),  // Cyan
+		glm::vec3(1.0f, 0.5f, 0.0f),  // Orange
+		glm::vec3(0.5f, 0.0f, 1.0f),  // Purple
+		glm::vec3(0.6f, 0.3f, 0.1f),  // Brown
+		glm::vec3(0.2f, 0.8f, 0.2f)   // Lime green
+	};
 	unsigned int VBO;
 	//unsigned int EBO;
 	unsigned int VAO;
@@ -230,6 +244,17 @@ int main()
 	glEnable(GL_DEPTH_TEST);
 
 	camera = Camera(windowWidth, windowHeight);
+
+	// Lighting Shader
+	Shader lightsShader("Shaders/LightsVertexShader.glsl","Shaders/LightsFragmentShader.glsl");
+	lightsShader.use();
+	unsigned int lightVAO;
+	glGenVertexArrays(1, &lightVAO);
+	glBindVertexArray(lightVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
 	// -----
 
 
@@ -248,7 +273,7 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		ourShader.setMat4("view", camera.view());
 		ourShader.setMat4("projection", camera.projection());
-		ourShader.setFloat("mixingFactor", fmod(glfwGetTime(), 5.0f) / 5.0f);
+		ourShader.setVec3("lightColor", lightColor);
 		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textures[0]);
@@ -264,11 +289,22 @@ int main()
 				glm::vec3(1.0f, 0.3f, 0.5f));
 
 			ourShader.setMat4("model", model);
+			ourShader.setVec3("objectColor", objectColors[i]);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
+		lightsShader.use();
+		lightsShader.setMat4("view", camera.view());
+		lightsShader.setMat4("projection", camera.projection());
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::translate(model, lightPos);
+		model = glm::scale(model, glm::vec3(0.2f));
+		lightsShader.setMat4("model", model);
+		glBindVertexArray(lightVAO);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
 		
-
+		lightColor = glm::vec3(fmod(lastFrame, 5.0f) / 5.0f);
 		frame++;
 		// -----
 		float currentFrame = glfwGetTime();
