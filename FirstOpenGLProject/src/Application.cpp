@@ -5,6 +5,9 @@
 #include "../Shader.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -108,6 +111,12 @@ int main()
 	glUniform1i(glGetUniformLocation(ourShader.ID, "texture2"), 1);
 
 	// -----
+	//glm::vec4 vec(1.0f, 1.0f, 1.0f, 1.0f);
+	//glm::mat4 trans = glm::mat4(1.0f);
+	//trans = glm::rotate(trans, glm::radians(10.f), glm::vec3(0.0f, 0.0f, 1.0f));
+	//trans = glm::scale(trans, glm::vec3(2.0f, 2.0f, 2.0f));
+	//trans = glm::translate(trans, glm::vec3(0.2f, -0.3f, 0.0f));
+	//std::cout << vec.x << vec.y << vec.z << "\n";
 	int frame = 0;
 	glViewport(0, 0, 800, 600);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -123,7 +132,13 @@ int main()
 		float timeValue = glfwGetTime();
 		float greenValue = (sin(timeValue) * 0.4f) + 0.6f;
 
-		ourShader.setFloat("offset", 0.1f);
+		glm::mat4 trans = glm::mat4(1.0f);
+		trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+		trans = glm::rotate(trans, (float)glfwGetTime(),
+			glm::vec3(0.0f, 0.0f, 1.0f));
+		trans = glm::scale(trans, glm::vec3(0.7f,0.7f,0.7f));
+		unsigned int transformLoc = glGetUniformLocation(ourShader.ID, "transform");
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE,glm::value_ptr(trans));
 		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textures[0]);
