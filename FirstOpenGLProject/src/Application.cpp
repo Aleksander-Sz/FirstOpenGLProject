@@ -275,9 +275,20 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		ourShader.setMat4("view", camera.view());
 		ourShader.setMat4("projection", camera.projection());
-		ourShader.setVec3("lightColor", lightColor);
-		ourShader.setVec3("lightPos", lightPos);
+		lightColor.x = sin(glfwGetTime() * 2.0f);
+		lightColor.y = sin(glfwGetTime() * 0.7f);
+		lightColor.z = sin(glfwGetTime() * 1.3f);
+		glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f);
+		glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f);
+		ourShader.setVec3("light.ambient", ambientColor);
+		ourShader.setVec3("light.diffuse", diffuseColor);
+		ourShader.setVec3("light.specular", glm::vec3(1.0f));
+		ourShader.setVec3("light.position", lightPos);
 		ourShader.setVec3("viewPos", camera.cameraPos);
+		//material properties
+		ourShader.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+		ourShader.setFloat("material.shininess", 32.0f);
+		//
 		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textures[0]);
@@ -293,7 +304,8 @@ int main()
 				glm::vec3(1.0f, 0.3f, 0.5f));
 
 			ourShader.setMat4("model", model);
-			ourShader.setVec3("objectColor", objectColors[i]);
+			ourShader.setVec3("material.ambient", objectColors[i]);
+			ourShader.setVec3("material.diffuse", objectColors[i]);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 		lightsShader.use();
@@ -303,6 +315,7 @@ int main()
 		model = glm::translate(model, lightPos);
 		model = glm::scale(model, glm::vec3(0.2f));
 		lightsShader.setMat4("model", model);
+		lightsShader.setVec3("lightColor", lightColor);
 		glBindVertexArray(lightVAO);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
