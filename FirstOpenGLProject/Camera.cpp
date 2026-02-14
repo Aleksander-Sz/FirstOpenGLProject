@@ -19,6 +19,6 @@ glm::mat4 Camera::view()
 glm::mat4 Camera::projection()
 {
 	glm::mat4 projection;
-	projection = glm::perspective(glm::radians(zoom), (float)(windowWidth / windowHeight), 0.1f, 100.0f);
+	projection = glm::perspective(glm::radians(zoom), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
 	return projection;
 }

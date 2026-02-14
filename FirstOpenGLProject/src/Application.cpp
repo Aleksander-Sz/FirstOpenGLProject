@@ -119,6 +119,11 @@ int main()
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 
+	int fbWidth, fbHeight;
+	glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+	glViewport(0, 0, fbWidth, fbHeight);
+	camera = Camera(fbWidth, fbHeight);
+
 	// Rendering commands here
 
 	Shader ourShader("Shaders/VertexShader.glsl","Shaders/FragmentShader.glsl");
@@ -245,7 +250,6 @@ int main()
 
 	glEnable(GL_DEPTH_TEST);
 
-	camera = Camera(windowWidth, windowHeight);
 
 	// Lighting Shader
 	Shader lightsShader("Shaders/LightsVertexShader.glsl","Shaders/LightsFragmentShader.glsl");
@@ -270,7 +274,6 @@ int main()
 		//rendering commands here
 		ourShader.use();
 		glClearColor(0.0f, 0.1f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		ourShader.setMat4("view", camera.view());
@@ -278,7 +281,14 @@ int main()
 		ourShader.setVec3("light.ambient", lightColor * 0.2f);
 		ourShader.setVec3("light.diffuse", lightColor);
 		ourShader.setVec3("light.specular", glm::vec3(1.0f));
-		ourShader.setVec3("light.position", lightPos);
+		ourShader.setVec3("light.position", camera.cameraPos);
+		ourShader.setVec3("light.direction", camera.cameraFront);
+		ourShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
+		ourShader.setFloat("light.outerCutOff", glm::cos(glm::radians(20.0f)));
+		ourShader.setInt("light.type", 2); // 0: point light, 1: directional light, 2: spotlight
+		ourShader.setFloat("light.constant", 1.0f);
+		ourShader.setFloat("light.linear", 0.09f);
+		ourShader.setFloat("light.quadratic", 0.032f);
 		ourShader.setVec3("viewPos", camera.cameraPos);
 		//material properties
 		ourShader.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
