@@ -16,7 +16,7 @@ float lastX = 400, lastY = 300;
 bool firstMovement = true;
 Camera camera;
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-glm::vec3 lightColor(0.8f, 1.0f, 0.8f);
+glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -217,10 +217,10 @@ int main()
 	glBindTexture(GL_TEXTURE_2D, textures[0]);
 	int width, height, nrChannels;
 	stbi_set_flip_vertically_on_load(true);
-	unsigned char* data = stbi_load("Textures/Poliigon_BrickWallReclaimed_8320_BaseColor.jpg", &width, &height, &nrChannels, 0);
+	unsigned char* data = stbi_load("Textures/container-diffuse.png", &width, &height, &nrChannels, 0);
 	if (data)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
@@ -229,10 +229,10 @@ int main()
 	}
 	stbi_image_free(data);
 	glBindTexture(GL_TEXTURE_2D, textures[1]);
-	data = stbi_load("Textures/smile.jpg", &width, &height, &nrChannels, 0);
+	data = stbi_load("Textures/container-specular.png", &width, &height, &nrChannels, 0);
 	if (data)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
@@ -240,8 +240,8 @@ int main()
 		std::cout << "Failed to load texture.\n";
 	}
 	stbi_image_free(data);
-	glUniform1i(glGetUniformLocation(ourShader.ID, "texture1"), 0);
-	glUniform1i(glGetUniformLocation(ourShader.ID, "texture2"), 1);
+	ourShader.setInt("material.diffuse", 0);
+	ourShader.setInt("material.specular", 1);
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -275,13 +275,8 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		ourShader.setMat4("view", camera.view());
 		ourShader.setMat4("projection", camera.projection());
-		lightColor.x = sin(glfwGetTime() * 2.0f);
-		lightColor.y = sin(glfwGetTime() * 0.7f);
-		lightColor.z = sin(glfwGetTime() * 1.3f);
-		glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f);
-		glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f);
-		ourShader.setVec3("light.ambient", ambientColor);
-		ourShader.setVec3("light.diffuse", diffuseColor);
+		ourShader.setVec3("light.ambient", lightColor * 0.2f);
+		ourShader.setVec3("light.diffuse", lightColor);
 		ourShader.setVec3("light.specular", glm::vec3(1.0f));
 		ourShader.setVec3("light.position", lightPos);
 		ourShader.setVec3("viewPos", camera.cameraPos);
@@ -305,7 +300,6 @@ int main()
 
 			ourShader.setMat4("model", model);
 			ourShader.setVec3("material.ambient", objectColors[i]);
-			ourShader.setVec3("material.diffuse", objectColors[i]);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 		lightsShader.use();
