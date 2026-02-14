@@ -29,9 +29,36 @@ in vec3 normal;
 in vec3 fragPos;
 
 uniform vec3 viewPos;
-uniform Light light;
+uniform int numLights;
+#define NR_LIGHTS 10
+uniform Light lights[NR_LIGHTS];
 
 uniform Material material;
+
+vec4 CalcPointLight(Light inLight, vec3 inFragPos)
+{
+	vec4 directionAndAttenuation;
+	directionAndAttenuation.xyz = normalize(inLight.position - inFragPos);
+	float distance = length(inLight.position - inFragPos);
+	directionAndAttenuation.w = 1.0 / (inLight.constant + inLight.linear * distance + inLight.quadratic * (distance * distance));
+	return directionAndAttenuation;
+}
+vec4 CalcDirectionalLight(Light inLight)
+{
+	return vec4(-normalize(inLight.direction), 1.0f);
+}
+vec4 CalcSpotLight(Light inLight, vec3 inFragPos)
+{
+	vec4 directionAndAttenuation;
+	vec3 rayDirection = normalize(inLight.position - inFragPos);
+	directionAndAttenuation.xyz = rayDirection;
+	float theta = dot(rayDirection, -normalize(inLight.direction));
+	float epsilon = inLight.cutOff - inLight.outerCutOff;
+	float distance = length(inLight.position - inFragPos);
+	float intensity = clamp((theta - inLight.outerCutOff) / epsilon, 0.0, 1.0);
+	directionAndAttenuation.w = intensity * 1.0 / (inLight.constant + inLight.linear * distance + inLight.quadratic * (distance * distance));
+	return directionAndAttenuation;
+}
 
 void main()
 {
@@ -39,36 +66,35 @@ void main()
 	vec3 diffuseColor = texture(material.diffuse, texCoords).xyz;
 	vec3 specularColor = texture(material.specular, texCoords).xyz;
 	// ambient
-	vec3 ambient = diffuseColor * light.ambient;
-	// diffuse
+	vec3 ambient = diffuseColor * lights[0].ambient;
+	
 	vec3 normalizedNormal = normalize(normal);
-	vec3 lightDirection;
-	float attenuation = 1.0f;
-	if(light.type == 0)
+	vec3 totalColor = ambient;
+	for(int i = 0; i < numLights; i++)
 	{
-		lightDirection = normalize(light.position - fragPos);
-		float distance = length(light.position - fragPos);
-		attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+		vec4 directionAndAttenuation;
+		if(lights[i].type == 0)
+		{
+			directionAndAttenuation = CalcDirectionalLight(lights[i]);
+		}
+		else if(lights[i].type == 1)
+		{
+			directionAndAttenuation = CalcPointLight(lights[i], fragPos);
+		}
+		else if(lights[i].type == 2)
+		{
+			directionAndAttenuation = CalcSpotLight(lights[i], fragPos);
+		}
+		// diffuse
+		float diff = max(dot(normalizedNormal, directionAndAttenuation.xyz), 0.0f);
+		vec3 diffuse = lights[i].diffuse * diff * diffuseColor;
+		// specular
+		vec3 viewDir = normalize(viewPos - fragPos);
+		vec3 reflectDir = reflect(-directionAndAttenuation.xyz, normalizedNormal);
+		float spec = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
+		vec3 specular = spec * lights[i].specular * specularColor;
+		vec3 finalColor = (diffuse + specular) * directionAndAttenuation.w;
+		totalColor += finalColor;
 	}
-	if(light.type == 1)
-	{
-		lightDirection = -normalize(light.direction);
-	}
-	if(light.type == 2)
-	{
-		lightDirection = normalize(light.position - fragPos);
-		float theta = dot(lightDirection, -normalize(light.direction));
-		float epsilon = light.cutOff - light.outerCutOff;
-		float distance = length(light.position - fragPos);
-		float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
-		attenuation = intensity * 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
-	}
-	float diff = max(dot(normalizedNormal, lightDirection), 0.0f);
-	vec3 diffuse = light.diffuse * diff * diffuseColor;
-	// specular
-	vec3 viewDir = normalize(viewPos - fragPos);
-	vec3 reflectDir = reflect(-lightDirection, normalizedNormal);
-	float spec = pow(max(dot(viewDir, reflectDir), 0.0f), 32);
-	vec3 specular = spec * light.specular * specularColor;
-	FragColor = vec4((ambient + diffuse + specular) * attenuation, 1.0f);
+	FragColor = vec4(totalColor, 1.0f);
 }

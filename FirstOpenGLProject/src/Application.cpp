@@ -4,19 +4,19 @@
 #include <iostream>
 #include "../Shader.h"
 #include "../Camera.h"
+#include "../Light.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 #include <gtc/type_ptr.hpp>
+#include <vector>
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 float lastX = 400, lastY = 300;
 bool firstMovement = true;
 Camera camera;
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -263,6 +263,14 @@ int main()
 
 	// -----
 
+	// Light properties
+	std::vector<Light> lights;
+	lights.push_back(Light::DirectionalLight(glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(1.0f), glm::vec3(-0.2f, -1.0f, -0.3f)));
+	
+	lights.push_back(Light::PointLight(glm::vec3(0.0f, 0.0f, 0.3f), glm::vec3(0.3f), glm::vec3(2.0f, 1.0f, 0.0f)));
+	lights.push_back(Light::PointLight(glm::vec3(0.0f, 0.3f, 0.0f), glm::vec3(0.3f), glm::vec3(-2.0f, 1.0f, 0.0f)));
+	lights.push_back(Light::SpotLight(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.7f), camera.cameraPos, camera.cameraFront, glm::cos(glm::radians(12.5f)), glm::cos(glm::radians(20.0f))));
+
 
 	int frame = 0;
 	glViewport(0, 0, windowWidth, windowHeight);
@@ -278,17 +286,22 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		ourShader.setMat4("view", camera.view());
 		ourShader.setMat4("projection", camera.projection());
-		ourShader.setVec3("light.ambient", lightColor * 0.2f);
-		ourShader.setVec3("light.diffuse", lightColor);
-		ourShader.setVec3("light.specular", glm::vec3(1.0f));
-		ourShader.setVec3("light.position", camera.cameraPos);
-		ourShader.setVec3("light.direction", camera.cameraFront);
-		ourShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
-		ourShader.setFloat("light.outerCutOff", glm::cos(glm::radians(20.0f)));
-		ourShader.setInt("light.type", 2); // 0: point light, 1: directional light, 2: spotlight
-		ourShader.setFloat("light.constant", 1.0f);
-		ourShader.setFloat("light.linear", 0.09f);
-		ourShader.setFloat("light.quadratic", 0.032f);
+		ourShader.setInt("numLights", lights.size());
+		lights[lights.size() - 1].UpdateFlashlight(camera); // Update spotlight to follow the camera
+		for (int i = 0; i < lights.size(); i++)
+		{
+			ourShader.setVec3( "lights[" + std::to_string(i) + "].ambient",     lights[i].ambient);
+			ourShader.setVec3( "lights[" + std::to_string(i) + "].diffuse",     lights[i].diffuse);
+			ourShader.setVec3( "lights[" + std::to_string(i) + "].specular",    lights[i].specular);
+			ourShader.setVec3( "lights[" + std::to_string(i) + "].position",    lights[i].position);
+			ourShader.setVec3( "lights[" + std::to_string(i) + "].direction",   lights[i].direction);
+			ourShader.setFloat("lights[" + std::to_string(i) + "].cutOff",      lights[i].cutOff);
+			ourShader.setFloat("lights[" + std::to_string(i) + "].outerCutOff", lights[i].outerCutOff);
+			ourShader.setInt(  "lights[" + std::to_string(i) + "].type",        lights[i].type); // 0: directional light, 1: point light, 2: spotlight
+			ourShader.setFloat("lights[" + std::to_string(i) + "].constant",    lights[i].constant);
+			ourShader.setFloat("lights[" + std::to_string(i) + "].linear",      lights[i].linear);
+			ourShader.setFloat("lights[" + std::to_string(i) + "].quadratic",   lights[i].quadratic);
+		}
 		ourShader.setVec3("viewPos", camera.cameraPos);
 		//material properties
 		ourShader.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
@@ -315,14 +328,19 @@ int main()
 		lightsShader.use();
 		lightsShader.setMat4("view", camera.view());
 		lightsShader.setMat4("projection", camera.projection());
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, lightPos);
-		model = glm::scale(model, glm::vec3(0.2f));
-		lightsShader.setMat4("model", model);
-		lightsShader.setVec3("lightColor", lightColor);
 		glBindVertexArray(lightVAO);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		for (int i = 0; i < lights.size(); i++)
+		{
+			if (lights[i].type != 1) continue; // Skip directional and spot lights for rendering
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, lights[i].position);
+			model = glm::scale(model, glm::vec3(0.2f));
+			lightsShader.setVec3("lightColor", lights[i].diffuse);
+			lightsShader.setMat4("model", model);
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
+		
 		glBindVertexArray(0);
 		
 		//lightColor = glm::vec3(fmod(lastFrame, 5.0f) / 5.0f);
