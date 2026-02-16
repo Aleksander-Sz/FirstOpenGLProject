@@ -256,6 +256,7 @@ int main()
 
 
 	// Lighting Shader
+	// point light cube
 	Shader lightsShader("Shaders/LightsVertexShader.glsl","Shaders/LightsFragmentShader.glsl");
 	lightsShader.use();
 	unsigned int lightVAO;
@@ -264,12 +265,14 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-
+	// directional light arrow
+	Model arrowModel1("Models/Arrow1.obj");
+	Model arrowModel2("Models/Arrow2.obj");
 	// -----
 
 	// Light properties
 	std::vector<Light> lights;
-	lights.push_back(Light::DirectionalLight(glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(1.0f), glm::vec3(-0.2f, -1.0f, -0.3f)));
+	lights.push_back(Light::DirectionalLight(glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(1.0f), glm::vec3(1.0f, -0.5f, 0.0f)));
 	
 	lights.push_back(Light::PointLight(glm::vec3(0.0f, 0.0f, 0.3f), glm::vec3(0.3f), glm::vec3(2.0f, 1.0f, 0.0f)));
 	lights.push_back(Light::PointLight(glm::vec3(0.0f, 0.3f, 0.0f), glm::vec3(0.3f), glm::vec3(-2.0f, 1.0f, 0.0f)));
@@ -337,13 +340,71 @@ int main()
 		ourShader.setMat4("model", model);
 		ourModel.Draw(ourShader);
 		lightsShader.use();
-		lightsShader.setMat4("view", camera.view());
-		lightsShader.setMat4("projection", camera.projection());
-		glBindVertexArray(lightVAO);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		for (int i = 0; i < lights.size(); i++)
 		{
+			// directional light arrow
+			if (lights[i].type == 0)
+			{
+				// draw overlay in screen space but keep full 3D orientation (no flattening to 2D)
+				glm::mat4 orthoProj = glm::ortho(0.0f, (float)windowWidth, (float)windowHeight, 0.0f, -100.0f, 100.0f);
+				lightsShader.setMat4("projection", orthoProj);
+				lightsShader.setMat4("view", glm::mat4(1.0f)); // identity view for HUD overlay
+
+				glm::mat4 model = glm::mat4(1.0f);
+				model = glm::translate(model, glm::vec3(windowWidth - 80.0f, windowHeight - 80.0f, 0.0f));
+
+				// world -> view rotation (we want arrow oriented relative to camera)
+				glm::vec3 worldDir = glm::normalize(lights[i].direction);
+				glm::mat3 viewRot = glm::mat3(camera.view());
+				glm::vec3 dirInView = glm::normalize(viewRot * worldDir);
+
+				// Because orthographic overlay uses screen coords with Y down (top=windowHeight),
+				// flip Y so arrow orientation matches screen space.
+				dirInView.y = -dirInView.y;
+
+				// Model's forward vector: change if your arrow model's 'forward' isn't +Y.
+				glm::vec3 from = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f));
+				glm::vec3 to = glm::normalize(dirInView);
+
+				// robust angle-axis rotation from 'from' to 'to'
+				float cosTheta = glm::clamp(glm::dot(from, to), -1.0f, 1.0f);
+				glm::mat4 rotationMat = glm::mat4(1.0f);
+
+				if (cosTheta > 0.9999f)
+				{
+					// vectors nearly equal -> no rotation
+				}
+				else if (cosTheta < -0.9999f)
+				{
+					// vectors opposite -> rotate 180 degrees around any perpendicular axis
+					glm::vec3 axis = glm::cross(from, glm::vec3(1.0f, 0.0f, 0.0f));
+					if (glm::dot(axis, axis) < 0.0001f)
+						axis = glm::cross(from, glm::vec3(0.0f, 0.0f, 1.0f));
+					axis = glm::normalize(axis);
+					rotationMat = glm::rotate(glm::mat4(1.0f), glm::pi<float>(), axis);
+				}
+				else
+				{
+					glm::vec3 axis = glm::normalize(glm::cross(from, to));
+					float angle = acos(cosTheta);
+					rotationMat = glm::rotate(glm::mat4(1.0f), angle, axis);
+				}
+
+				// apply rotation and scale (scale after rotation so arrow keeps correct orientation)
+				model = model * rotationMat;
+				model = glm::scale(model, glm::vec3(10.0f));
+
+				lightsShader.setMat4("model", model);
+				lightsShader.setVec3("lightColor", lights[i].diffuse * 0.7f);
+				arrowModel1.Draw(lightsShader); // render an arrow for the directional light
+				lightsShader.setVec3("lightColor", lights[i].diffuse);
+				arrowModel2.Draw(lightsShader);
+			}
 			if (lights[i].type != 1) continue; // Skip directional and spot lights for rendering
+			lightsShader.setMat4("view", camera.view());
+			lightsShader.setMat4("projection", camera.projection());
+			glBindVertexArray(lightVAO);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			glm::mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, lights[i].position);
 			model = glm::scale(model, glm::vec3(0.2f));
