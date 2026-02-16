@@ -1,8 +1,8 @@
 #version 330 core
 
 struct Material {
-	sampler2D diffuse;
-	sampler2D specular;
+	sampler2D texture_diffuse1;
+	sampler2D texture_specular1;
 	float shininess;
 };
 struct Light {
@@ -63,8 +63,8 @@ vec4 CalcSpotLight(Light inLight, vec3 inFragPos)
 void main()
 {
 	//texture
-	vec3 diffuseColor = texture(material.diffuse, texCoords).xyz;
-	vec3 specularColor = texture(material.specular, texCoords).xyz;
+	vec3 diffuseColor = texture(material.texture_diffuse1, texCoords).xyz;
+	vec3 specularColor = texture(material.texture_specular1, texCoords).xyz;
 	// ambient
 	vec3 ambient = diffuseColor * lights[0].ambient;
 	

@@ -5,12 +5,13 @@
 #include "../Shader.h"
 #include "../Camera.h"
 #include "../Light.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "../Model.h"
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 #include <gtc/type_ptr.hpp>
 #include <vector>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -245,8 +246,11 @@ int main()
 		std::cout << "Failed to load texture.\n";
 	}
 	stbi_image_free(data);
-	ourShader.setInt("material.diffuse", 0);
-	ourShader.setInt("material.specular", 1);
+	/*ourShader.setInt("material.diffuse", 0);
+	ourShader.setInt("material.specular", 1);*/
+
+	//loading model
+	Model ourModel("Models/backpack.obj");
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -312,6 +316,8 @@ int main()
 		glBindTexture(GL_TEXTURE_2D, textures[0]);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, textures[1]);
+		ourShader.setInt("material.diffuse", 0);
+		ourShader.setInt("material.specular", 1);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		for (int i = 0; i < _countof(cubePositions); i++)
 		{
@@ -325,6 +331,11 @@ int main()
 			ourShader.setVec3("material.ambient", objectColors[i]);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 5.0f));
+		model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
+		ourShader.setMat4("model", model);
+		ourModel.Draw(ourShader);
 		lightsShader.use();
 		lightsShader.setMat4("view", camera.view());
 		lightsShader.setMat4("projection", camera.projection());
